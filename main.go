@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -37,7 +39,6 @@ func AddExpense(db *sql.DB){
 		return
 	}
 
-
 	fmt.Print("Enter the category of the expense: ")
 	text,err = reader.ReadString('\n')
 	if err!=nil {
@@ -54,7 +55,9 @@ func AddExpense(db *sql.DB){
 		return
 	}
 	date := strings.TrimSpace(text)
-	
+	if date == "" {
+		date = time.Now().Format("2006-01-02")
+	}
 	
 
 	_,err = db.Exec(`insert into expenses(name,amount,category,date) values(?,?,?,?)`, name, amount, category, date)
@@ -94,15 +97,23 @@ func ViewAllExpenses(db *sql.DB){
 
 func ViewExpensesByDate(db *sql.DB){
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter the date: ")
+	fmt.Print("Enter the startDate: ")
 	text,err:= reader.ReadString('\n')
 	if err!=nil {
 		fmt.Println("Error reading input")
 		return
 	}
-	date := strings.TrimSpace(text)
+	startDate := strings.TrimSpace(text)
 
-	rows,err:=db.Query("select * from expenses where date = ?",date)
+	fmt.Print("Enter the endDate: ")
+	text,err = reader.ReadString('\n')
+	if err!=nil {
+		fmt.Println("Error reading input")
+		return
+	}
+	endDate := strings.TrimSpace(text)
+
+	rows,err:=db.Query("select * from expenses where date between ? and ?",startDate,endDate)
 	if err!=nil {
 		fmt.Println("Error fetching expenses",err)
 		return
@@ -250,12 +261,13 @@ func main(){
 		return
 	}
 	// fmt.Println("Schema executed successfully")
-
-	fmt.Println("Welcome to Kartike's Expense Tracker")
-	fmt.Println("1. Add an Expense")
-	fmt.Println("2. View Expenses")
-	fmt.Println("3. Delete an Expense")
-	fmt.Println("4. Exit")
+	for{
+		
+		fmt.Println("Welcome to Kartike's Expense Tracker")
+		fmt.Println("1. Add an Expense")
+		fmt.Println("2. View Expenses")
+		fmt.Println("3. Delete an Expense")
+		fmt.Println("4. Exit")
 	
 
 	fmt.Print("Choose any of the above options: ")
@@ -291,5 +303,5 @@ func main(){
 	}
 	
 	
-
+}
 }
