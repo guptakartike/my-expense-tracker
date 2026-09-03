@@ -1,0 +1,4 @@
+expenses.db
+*.exe
+*.out
+.DS_Store

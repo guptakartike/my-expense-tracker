@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -91,7 +92,9 @@ func ViewAllExpenses(db *sql.DB){
 			fmt.Println("Error scanning row",err)
 			return
 		}
-		fmt.Printf("%d | %s | %.2f | %s | %s\n",id,name,amount,category,date)
+		w:=tabwriter.NewWriter(os.Stdout,0,0,2, ' ', 0)
+		fmt.Fprintf(w,"%d\t%s\t%.2f\t%s\t%s\n",id,name,amount,category,date)
+		w.Flush()
 	}
 }
 
@@ -103,7 +106,7 @@ func ViewExpensesByDate(db *sql.DB){
 		fmt.Println("Error reading input")
 		return
 	}
-	startDate := strings.TrimSpace(text)
+	startDateStr := strings.TrimSpace(text)
 
 	fmt.Print("Enter the endDate: ")
 	text,err = reader.ReadString('\n')
@@ -111,9 +114,21 @@ func ViewExpensesByDate(db *sql.DB){
 		fmt.Println("Error reading input")
 		return
 	}
-	endDate := strings.TrimSpace(text)
+	endDateStr := strings.TrimSpace(text)
 
-	rows,err:=db.Query("select * from expenses where date between ? and ?",startDate,endDate)
+	startDate,err := time.Parse("2006-01-02",startDateStr)
+	if err!=nil {
+		fmt.Println("Error parsing start date",err)
+		return
+	}
+
+	endDate,err := time.Parse("2006-01-02",endDateStr)	
+	if err!=nil {
+		fmt.Println("Error parsing end date",err)
+		return
+	}
+
+	rows,err:=db.Query("select * from expenses where date between ? and ?",startDate.Format("2006-01-02"),endDate.Format("2006-01-02"))
 	if err!=nil {
 		fmt.Println("Error fetching expenses",err)
 		return
@@ -148,7 +163,7 @@ func ViewExpensesByCategory(db *sql.DB){
 	}
 	category := strings.TrimSpace(strings.ToLower(text))
 
-	rows,err:=db.Query("select * from expenses where category = ?",category)
+	rows,err:=db.Query("select * from expenses where lower(category) = lower(?)",category)
 
 	if err!=nil {
 		fmt.Println("Error fetching expenses",err)
@@ -198,7 +213,7 @@ func ViewExpenses(db *sql.DB){
 		case 3:
 			ViewExpensesByDate(db)
 		case 4:
-			main()
+			return
 		default:
 			fmt.Println("Invalid choice")
 			return
@@ -207,6 +222,7 @@ func ViewExpenses(db *sql.DB){
 }
 
 func DeleteExpense(db *sql.DB){
+	fmt.Print("Enter the ID of the expense to delete: ")
 	reader:= bufio.NewReader(os.Stdin)
 	text,err:=reader.ReadString('\n')
 	if err!=nil {
@@ -220,12 +236,16 @@ func DeleteExpense(db *sql.DB){
 		return
 	}
 
-	_,err = db.Exec("delete from expenses where id = ? ",id)
+	res,err := db.Exec("delete from expenses where id = ? ",id)
 	if err!=nil {
 		fmt.Println("Error deleting expense",err)
 		return
 	}
-
+	count,_:= res.RowsAffected()
+	if count == 0 {
+		fmt.Println("No expense found with the given ID")
+		return
+	}
 	fmt.Println("Expense deleted successfully")
 
 	
